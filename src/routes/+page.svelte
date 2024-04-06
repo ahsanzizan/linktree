@@ -10,7 +10,7 @@
 <MetaTags
 	title={data.profile.fullName}
 	description={data.profile.bio}
-	titleTemplate={`%s | ${data.profile.username}'s links'`}
+	titleTemplate={`%s | ${data.profile.username}'s links`}
 />
 
 <JsonLd schema={[{ '@type': 'Person', name: data.profile.fullName }]} />
