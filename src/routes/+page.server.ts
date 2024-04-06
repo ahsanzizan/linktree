@@ -7,7 +7,7 @@ export const load = (async () => {
 	const bio = await prisma.content.findFirst({ where: { key: 'bio' } });
 	const picture = await prisma.content.findFirst({ where: { key: 'picture' } });
 
-	const links = await prisma.link.findMany();
+	const links = await prisma.link.findMany({});
 
 	return {
 		profile: {

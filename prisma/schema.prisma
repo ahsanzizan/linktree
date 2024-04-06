@@ -17,6 +17,7 @@ model Link {
   id    String @id @default(auto()) @map("_id") @db.ObjectId
   title String
   url   String
+  order Int?
 }
 
 model Content {
