@@ -1,22 +1,18 @@
-# Private LinkTree
+# links.ahsanzizan.xyz
 
-Building my own linktree because why not?
+My link page. SvelteKit, prerendered to static HTML, with a WebGL contour field behind the links.
+
+## Edit links
+
+Links and profile text live in `src/lib/profile.ts`. Push to `main` and Vercel redeploys.
+
+`GET /api/links` returns the same list as JSON.
 
 ## Run
 
 ```bash
+npm install
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
-```
-
-## Building
-
-To create a production version:
-
-```bash
+npm run check
 npm run build
 ```
-
-Preview the production build with `npm run preview`.

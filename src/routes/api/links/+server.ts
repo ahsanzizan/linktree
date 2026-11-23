@@ -1,17 +1,10 @@
-import prisma from '$lib/prisma';
-import type { RequestHandler } from './$types';
+import { json } from '@sveltejs/kit';
+import { links } from '../../../lib/profile';
 
-export const GET: RequestHandler = async () => {
-	try {
-		const links = await prisma.link.findMany({});
+export const prerender = false;
 
-		return new Response(JSON.stringify({ status: 200, message: 'Success', data: links }), {
-			status: 200,
-			headers: { 'Content-Type': 'application/json' }
-		});
-	} catch (error) {
-		return new Response(JSON.stringify({ status: 500, message: 'Internal Server Error' }), {
-			status: 500
-		});
-	}
-};
+export const GET = () =>
+	json(
+		{ status: 200, message: 'Success', data: links },
+		{ headers: { 'cache-control': 'public, max-age=300, s-maxage=31536000' } }
+	);
