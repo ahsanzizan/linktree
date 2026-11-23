@@ -21,11 +21,6 @@ export const links: Link[] = [
 		url: 'https://youtube.com/@ahsanzizan'
 	},
 	{
-		id: '6615282c21f1fce47ae1bbb3',
-		title: 'Curriculum Vitae',
-		url: 'https://docs.google.com/document/d/1EsKb3FK14WCt-26ClYrH8H88PaAcGX9QU4IDg62MtUo/edit?usp=sharing'
-	},
-	{
 		id: '6610d02a9fbc8bad9a6e3815',
 		title: 'Discord',
 		url: 'https://discordapp.com/users/650696568227233823'
@@ -47,10 +42,5 @@ export const links: Link[] = [
 		title: 'HackerRank',
 		url: 'https://www.hackerrank.com/profile/ahsanzizan'
 	},
-	{ id: '6610e0119fbc8bad9a6e3823', title: 'X', url: 'https://twitter.com/ahsanaz461' },
-	{
-		id: '6610f3599fbc8bad9a6e3824',
-		title: 'Certifications',
-		url: 'https://l.ahsanzizan.xyz/certifications'
-	}
+	{ id: '6610e0119fbc8bad9a6e3823', title: 'X', url: 'https://twitter.com/ahsanaz461' }
 ];
