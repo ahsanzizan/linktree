@@ -7,6 +7,7 @@
 	const MAGNET_PX = 5;
 
 	let canvas: HTMLCanvasElement;
+	let avatar: HTMLImageElement;
 	let field: SignalField | null = null;
 	let fieldVisible = $state(false);
 	let magnetic = false;
@@ -33,7 +34,10 @@
 		try {
 			field = createSignalField(canvas, {
 				animate: !reducedMotion,
-				onFirstFrame: () => (fieldVisible = true)
+				onFirstFrame: () => {
+					fieldVisible = true;
+					requestAnimationFrame(() => rippleAt(avatar));
+				}
 			});
 		} catch (error) {
 			console.error(error);
@@ -41,9 +45,18 @@
 		return () => field?.destroy();
 	});
 
-	function rippleFrom(event: PointerEvent | FocusEvent) {
-		const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+	function rippleAt(element: Element) {
+		const rect = element.getBoundingClientRect();
 		field?.ripple(rect.left + rect.width / 2, rect.top + rect.height / 2);
+	}
+
+	function rippleOnHover(event: PointerEvent) {
+		if (event.pointerType === 'mouse') rippleAt(event.currentTarget as Element);
+	}
+
+	function rippleOnKeyboardFocus(event: FocusEvent) {
+		const link = event.currentTarget as Element;
+		if (link.matches(':focus-visible')) rippleAt(link);
 	}
 
 	function attract(event: PointerEvent) {
@@ -79,6 +92,7 @@
 <main>
 	<header>
 		<img
+			bind:this={avatar}
 			src={profile.picture}
 			alt={profile.fullName}
 			width="176"
@@ -98,8 +112,8 @@
 					href={link.url}
 					target={external ? '_blank' : undefined}
 					rel={external ? 'noopener' : undefined}
-					onpointerenter={rippleFrom}
-					onfocus={rippleFrom}
+					onpointerenter={rippleOnHover}
+					onfocus={rippleOnKeyboardFocus}
 					onpointermove={attract}
 					onpointerleave={release}
 				>
@@ -213,7 +227,7 @@
 			color 0.35s var(--ease-out);
 	}
 
-	a:hover {
+	a:active {
 		background: var(--ink);
 		border-color: var(--ink);
 		color: var(--paper);
@@ -245,7 +259,7 @@
 		transition: color 0.35s var(--ease-out);
 	}
 
-	a:hover .destination {
+	a:active .destination {
 		color: #525252;
 	}
 
@@ -260,8 +274,21 @@
 		transition: transform 0.35s var(--ease-out);
 	}
 
-	a:hover svg {
-		transform: translate(2px, -2px);
+	@media (hover: hover) {
+		a:hover {
+			background: var(--ink);
+			border-color: var(--ink);
+			color: var(--paper);
+			transition-duration: 0.18s, 0.35s, 0.35s, 0.35s;
+		}
+
+		a:hover .destination {
+			color: #525252;
+		}
+
+		a:hover svg {
+			transform: translate(2px, -2px);
+		}
 	}
 
 	.sr-only {

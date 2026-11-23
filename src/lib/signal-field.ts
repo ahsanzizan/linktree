@@ -6,6 +6,9 @@ const FRAGMENT = `#version 300 es
 precision highp float;
 uniform vec2 uRes;
 uniform float uTime;
+uniform float uPhase;
+uniform float uScroll;
+uniform float uFlow;
 uniform vec3 uPointer;
 uniform vec3 uRipples[RIPPLES];
 out vec4 outColor;
@@ -58,8 +61,9 @@ void main() {
 	vec2 toPointer = uv - pointer;
 	float pull = exp(-dot(toPointer, toPointer) * 9.0) * uPointer.z;
 	vec2 p = uv - toPointer * pull * 0.55;
+	p.y -= uScroll / unit * 0.35;
 
-	float t = uTime * 0.045;
+	float t = uPhase * 0.045;
 	float field = snoise(vec3(p * 1.35, t)) + 0.5 * snoise(vec3(p * 2.9 + 7.3, t * 1.6));
 
 	float glow = 0.0;
@@ -68,15 +72,16 @@ void main() {
 		float age = uTime - r.z;
 		if (age < 0.0 || age > 3.0) continue;
 		float d = length(uv - (r.xy - 0.5 * uRes) / unit);
-		float ring = exp(-pow((d - age * 0.55) * 14.0, 2.0)) * exp(-age * 1.6);
-		field += ring * 0.22;
+		float ring = exp(-pow((d - age * 0.55) * 10.0, 2.0)) * exp(-age * 1.6);
+		field += ring * 0.3;
 		glow += ring;
 	}
 
 	float bands = field * 7.0;
 	float line = 1.0 - smoothstep(0.0, 1.25, abs(fract(bands) - 0.5) / fwidth(bands));
-	float edge = mix(0.4, 1.0, smoothstep(0.18, 0.75, abs(uv.x)));
-	float alpha = line * (0.13 + 0.22 * pull + 0.3 * glow) * edge;
+	float centerDim = mix(0.4, 0.85, step(uRes.x, uRes.y));
+	float edge = mix(centerDim, 1.0, smoothstep(0.18, 0.75, abs(uv.x)));
+	float alpha = line * (0.13 + 0.12 * uFlow + 0.22 * pull + 0.6 * glow) * edge;
 	outColor = vec4(vec3(1.0), 1.0) * alpha;
 }`;
 
@@ -86,6 +91,12 @@ const LOW_END_PIXEL_RATIO = 0.75;
 const SLOW_FRAME_MS = 24;
 const FRAME_SAMPLE = 45;
 const POINTER_EASE = 0.08;
+const SCROLL_EASE = 0.12;
+const FLOW_EASE = 0.06;
+const FLOW_FULL_PX_PER_FRAME = 30;
+const FLOW_SPEEDUP = 6;
+const STILL_PHASE = 40;
+const MAX_FRAME_SECONDS = 0.05;
 
 export type SignalField = {
 	ripple: (clientX: number, clientY: number) => void;
@@ -129,6 +140,9 @@ export function createSignalField(
 	const uTime = gl.getUniformLocation(program, 'uTime');
 	const uPointer = gl.getUniformLocation(program, 'uPointer');
 	const uRipples = gl.getUniformLocation(program, 'uRipples');
+	const uPhase = gl.getUniformLocation(program, 'uPhase');
+	const uScroll = gl.getUniformLocation(program, 'uScroll');
+	const uFlow = gl.getUniformLocation(program, 'uFlow');
 
 	const ripples = new Float32Array(RIPPLES * 3).fill(-100);
 	let nextRipple = 0;
@@ -141,6 +155,10 @@ export function createSignalField(
 	let lastFrame = start;
 	let slowFrames = 0;
 	let sampled = 0;
+	let phase = STILL_PHASE;
+	let flow = 0;
+	let lastScroll = scrollY;
+	let scroll = scrollY;
 
 	const seconds = () => (performance.now() - start) / 1000;
 
@@ -156,7 +174,10 @@ export function createSignalField(
 
 	function draw() {
 		gl!.uniform2f(uRes, canvas.width, canvas.height);
-		gl!.uniform1f(uTime, animate ? seconds() : 40);
+		gl!.uniform1f(uTime, animate ? seconds() : STILL_PHASE);
+		gl!.uniform1f(uPhase, phase);
+		gl!.uniform1f(uScroll, (animate ? scroll : scrollY) * pixelRatio);
+		gl!.uniform1f(uFlow, flow);
 		gl!.uniform3f(
 			uPointer,
 			pointer.x * pixelRatio,
@@ -179,7 +200,13 @@ export function createSignalField(
 
 	function tick(now: number) {
 		adaptResolution(now);
+		const dt = Math.min((now - lastFrame) / 1000, MAX_FRAME_SECONDS);
 		lastFrame = now;
+		const scrolled = Math.abs(scrollY - lastScroll);
+		lastScroll = scrollY;
+		scroll += (scrollY - scroll) * SCROLL_EASE;
+		flow += (Math.min(scrolled / FLOW_FULL_PX_PER_FRAME, 1) - flow) * FLOW_EASE;
+		phase += dt * (1 + flow * FLOW_SPEEDUP);
 		pointer.x += (target.x - pointer.x) * POINTER_EASE;
 		pointer.y += (target.y - pointer.y) * POINTER_EASE;
 		pointer.strength += (target.strength - pointer.strength) * POINTER_EASE;
@@ -208,6 +235,19 @@ export function createSignalField(
 		}
 	}
 
+	function ripple(clientX: number, clientY: number) {
+		if (!animate) return;
+		ripples.set(
+			[clientX * pixelRatio, canvas.height - clientY * pixelRatio, seconds()],
+			nextRipple * 3
+		);
+		nextRipple = (nextRipple + 1) % RIPPLES;
+	}
+
+	function onPointerDown(event: PointerEvent) {
+		ripple(event.clientX, event.clientY);
+	}
+
 	function onPointerLeave() {
 		target.strength = 0;
 	}
@@ -223,6 +263,7 @@ export function createSignalField(
 	document.addEventListener('visibilitychange', onVisibility);
 	if (animate) {
 		addEventListener('pointermove', onPointerMove, { passive: true });
+		addEventListener('pointerdown', onPointerDown, { passive: true });
 		document.documentElement.addEventListener('pointerleave', onPointerLeave);
 	}
 	resize();
@@ -230,20 +271,14 @@ export function createSignalField(
 	else draw();
 
 	return {
-		ripple(clientX, clientY) {
-			if (!animate) return;
-			ripples.set(
-				[clientX * pixelRatio, canvas.height - clientY * pixelRatio, seconds()],
-				nextRipple * 3
-			);
-			nextRipple = (nextRipple + 1) % RIPPLES;
-		},
+		ripple,
 		destroy() {
 			pause();
 			observer.disconnect();
 			canvas.removeEventListener('webglcontextlost', pause);
 			document.removeEventListener('visibilitychange', onVisibility);
 			removeEventListener('pointermove', onPointerMove);
+			removeEventListener('pointerdown', onPointerDown);
 			document.documentElement.removeEventListener('pointerleave', onPointerLeave);
 		}
 	};
